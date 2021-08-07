@@ -1,5 +1,14 @@
 import math
 from random import random, randint, randrange, uniform
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import sklearn.datasets as sk
+from sklearn.datasets import make_classification
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
 
 pop_size = 50
 crossover_rate = 1
@@ -7,16 +16,17 @@ mutation_rate = 0.30
 alpha = 4
 elite_percent = 0.05
 generations = 200
-
-all_features = list()
-
 capacity = 0
 
+all_features = list()
+sonar = None
 
-class Item:
-    def __init__(self, features, class_):
-        self.features = features
-        self.class_ = class_
+
+class data:
+    def __init__(self, x, y, name):
+        self.x = x
+        self.y = y
+        self.name = name
 
 
 def main():
@@ -33,7 +43,7 @@ def genetic_algorithm():
             if fitness_function(chromosome) > fitness_function(best_chromosome):
                 best_chromosome = chromosome.copy()
 
-        print("current generation: " + str(generation) + "\tbest: " + str(calculate_value(best_chromosome)))
+        # print("current generation: " + str(generation) + "\tbest: " + str(calculate_value(best_chromosome)))
 
         genome.sort(key=lambda chromo: fitness_function(chromo), reverse=True)
 
@@ -52,7 +62,7 @@ def genetic_algorithm():
             new_genome.append(mutation(children2, 1, mutation_rate))
         genome = new_genome
 
-    return print(calculate_value(best_chromosome))
+    return print(best_chromosome)
 
 
 def create_data_struct():
@@ -64,10 +74,19 @@ def create_data_struct():
     lines.pop()
     all_features = lines
 
-    file_features = open("sonar.data", "r")
-    
+    sonar_data = pd.read_csv("sonar.data")
+    wbcd_data = pd.read_csv("wbcd.data")
 
+    print(wbcd_data.head())
+    x_data_sonar = sonar_data.iloc[:, :-1].values
+    y_data_sonar = sonar_data.iloc[:, 60].values
 
+    x_data_wbcd = wbcd_data.iloc[:, :-1].values
+    y_data_wbcd = wbcd_data.iloc[:, 30].values
+
+    global sonar
+    sonar = data(x_data_sonar, y_data_sonar, "sonar")
+    data_wbcd_formatted = data(x_data_wbcd, y_data_wbcd, "wbcd")
 
 
 def roulette_wheel_selection(genome):
@@ -80,29 +99,29 @@ def roulette_wheel_selection(genome):
             return chromosome
 
 
-def calculate_weight(chromosome):
-    # weight = 0
-    # index = 0
-    # for bit in chromosome:
-    #     if bit == 1:
-    #         weight += int(all_items[index].weight)
-    #     index += 1
-    return 0
-
-
-def calculate_value(chromosome):
-    # value = 0
-    # index = 0
-    # for bit in chromosome:
-    #     if bit == 1:
-    #         value += int(all_items[index].value)
-    #     index += 1
-    return 0
-
-
+# https://stackoverflow.com/questions/20297317/python-dataframe-pandas-drop-column-using-int
 def fitness_function(chromosome):
+    new_data = pd.DataFrame(sonar)
+    columns_remove = list()
+    for x in range(len(chromosome)):
+        if chromosome[x] == 0:
+            columns_remove.append(x)
 
-    return 0
+    new_data = new_data.drop(columns=new_data.columns[columns_remove])
+
+    X_train, X_test, y_train, y_test = train_test_split(new_data.x, new_data.y, test_size=0.5)
+
+    scalar = StandardScaler()
+    scalar.fit(X_train)
+    X_train = scalar.transform(X_train)
+    X_test = scalar.transform(X_test)
+
+    classifier = KNeighborsClassifier(n_neighbors=2)
+    classifier.fit(X_train, y_train)
+
+    y_prediction = classifier.predict(X_test)
+
+    return  accuracy_score(y_test, y_prediction)
 
 
 def mutation(chromosome, num: int = 1, probability: float = mutation_rate):
