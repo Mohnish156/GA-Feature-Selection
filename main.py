@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
 
-pop_size = 50
+pop_size = 5
 crossover_rate = 1
 mutation_rate = 0.30
 alpha = 4
@@ -43,7 +43,7 @@ def genetic_algorithm():
             if fitness_function(chromosome) > fitness_function(best_chromosome):
                 best_chromosome = chromosome.copy()
 
-        # print("current generation: " + str(generation) + "\tbest: " + str(calculate_value(best_chromosome)))
+        print("current generation: " + str(generation) + "\tbest: " + str(calculate_value(best_chromosome)))
 
         genome.sort(key=lambda chromo: fitness_function(chromo), reverse=True)
 
@@ -53,6 +53,7 @@ def genetic_algorithm():
         for top in range(top_chromosomes):
             new_genome.append(genome[top])
         while len(new_genome) <= pop_size:
+
             p1 = list(roulette_wheel_selection(genome))
             p2 = list(roulette_wheel_selection(genome))
 
