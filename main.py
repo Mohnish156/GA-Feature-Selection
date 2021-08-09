@@ -15,7 +15,7 @@ crossover_rate = 1
 mutation_rate = 0.30
 alpha = 4
 elite_percent = 0.05
-generations = 200
+generations = 1
 capacity = 0
 
 all_features = list()
@@ -74,8 +74,8 @@ def create_data_struct():
     lines.pop()
     all_features = lines
 
-    sonar_data = pd.read_csv("sonar.data")
-    wbcd_data = pd.read_csv("wbcd.data")
+    sonar_data = pd.read_csv("sonar.data", header=None)
+    wbcd_data = pd.read_csv("wbcd.data", header=None)
 
     print(wbcd_data.head())
     x_data_sonar = sonar_data.iloc[:, :-1].values
@@ -101,15 +101,19 @@ def roulette_wheel_selection(genome):
 
 # https://stackoverflow.com/questions/20297317/python-dataframe-pandas-drop-column-using-int
 def fitness_function(chromosome):
-    new_data = pd.DataFrame(sonar)
+    current_data = data(sonar.x.copy(), sonar.y.copy(), "sonar")
+
     columns_remove = list()
     for x in range(len(chromosome)):
         if chromosome[x] == 0:
             columns_remove.append(x)
+    c = current_data.x.copy()
+    new_data = pd.DataFrame(current_data.x)
 
     new_data = new_data.drop(columns=new_data.columns[columns_remove])
-
-    X_train, X_test, y_train, y_test = train_test_split(new_data.x, new_data.y, test_size=0.5)
+    current_data.x = new_data.copy()
+    
+    X_train, X_test, y_train, y_test = train_test_split(current_data.x, current_data.y, test_size=0.5)
 
     scalar = StandardScaler()
     scalar.fit(X_train)
@@ -120,8 +124,9 @@ def fitness_function(chromosome):
     classifier.fit(X_train, y_train)
 
     y_prediction = classifier.predict(X_test)
+    score = accuracy_score(y_test, y_prediction)
 
-    return  accuracy_score(y_test, y_prediction)
+    return score
 
 
 def mutation(chromosome, num: int = 1, probability: float = mutation_rate):
