@@ -9,6 +9,8 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.feature_selection import mutual_info_classif
+from sklearn.preprocessing import KBinsDiscretizer
 
 pop_size = 5
 crossover_rate = 1
@@ -19,7 +21,6 @@ generations = 1
 capacity = 0
 
 all_features = list()
-sonar = None
 
 
 class data:
@@ -40,10 +41,10 @@ def genetic_algorithm():
     for generation in range(generations):
 
         for chromosome in genome:
-            if fitness_function(chromosome) > fitness_function(best_chromosome):
+            if fitness_function_filter(chromosome) > fitness_function_filter(best_chromosome):
                 best_chromosome = chromosome.copy()
 
-        print("current generation: " + str(generation) + "\tbest: " + str(calculate_value(best_chromosome)))
+        # print("current generation: " + str(generation) + "\tbest: " + str(calculate_value(best_chromosome)))
 
         genome.sort(key=lambda chromo: fitness_function(chromo), reverse=True)
 
@@ -53,7 +54,6 @@ def genetic_algorithm():
         for top in range(top_chromosomes):
             new_genome.append(genome[top])
         while len(new_genome) <= pop_size:
-
             p1 = list(roulette_wheel_selection(genome))
             p2 = list(roulette_wheel_selection(genome))
 
@@ -72,7 +72,7 @@ def create_data_struct():
     for feature in file_name:
         lines.append(feature)
     global all_features
-    lines.pop()
+    lines.pop(0)
     all_features = lines
 
     sonar_data = pd.read_csv("sonar.data", header=None)
@@ -91,11 +91,11 @@ def create_data_struct():
 
 
 def roulette_wheel_selection(genome):
-    max_val = sum(fitness_function(chromosome) for chromosome in genome)
+    max_val = sum(fitness_function_filter(chromosome) for chromosome in genome)
     chosen = uniform(0, max_val)
     current = 0
     for chromosome in genome:
-        current += fitness_function(chromosome)
+        current += fitness_function_filter(chromosome)
         if current > chosen:
             return chromosome
 
@@ -113,7 +113,7 @@ def fitness_function(chromosome):
 
     new_data = new_data.drop(columns=new_data.columns[columns_remove])
     current_data.x = new_data.copy()
-    
+
     X_train, X_test, y_train, y_test = train_test_split(current_data.x, current_data.y, test_size=0.5)
 
     scalar = StandardScaler()
@@ -128,6 +128,27 @@ def fitness_function(chromosome):
     score = accuracy_score(y_test, y_prediction)
 
     return score
+
+
+def fitness_function_filter(chromosome):
+    global data
+    current_data = data(sonar.x.copy(), sonar.y.copy(), "sonar")
+    columns_remove = list()
+    for x in range(len(chromosome)):
+        if chromosome[x] == 0:
+            columns_remove.append(x)
+    c = current_data.x.copy()
+    new_data = pd.DataFrame(current_data.x)
+
+    new_data = new_data.drop(columns=new_data.columns[columns_remove])
+    current_data.x = new_data.copy()
+
+    discrete = KBinsDiscretizer(n_bins=10, encode='ordinal', strategy='uniform')
+    data1 = discrete.fit_transform(current_data.x)
+
+    score = mutual_info_classif(data1, list(current_data.y))
+
+    return sum(score) / len(score)
 
 
 def mutation(chromosome, num: int = 1, probability: float = mutation_rate):
